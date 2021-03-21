@@ -36,7 +36,7 @@ var SqlColumnMetadataCodec sqlcolumnmetadataCodec
 func EncodeSqlColumnMetadata(clientMessage *proto.ClientMessage, sqlColumnMetadata sql.SqlColumnMetadata){
     clientMessage.AddFrame(proto.BeginFrame.Copy())
     initialFrame := proto.NewFrame(make([]byte,SqlColumnMetadataCodecNullableInitialFrameSize))
-    FixSizedTypesCodec.EncodeInt(initialFrame.Content, SqlColumnMetadataCodecTypeFieldOffset, int32(sqlColumnMetadata.Type()))
+    FixSizedTypesCodec.EncodeInt(initialFrame.Content, SqlColumnMetadataCodecTypeFieldOffset, int32(sqlColumnMetadata.ColumnType()))
     FixSizedTypesCodec.EncodeBoolean(initialFrame.Content, SqlColumnMetadataCodecNullableFieldOffset, sqlColumnMetadata.Nullable())
     clientMessage.AddFrame(initialFrame)
 
@@ -51,12 +51,26 @@ func DecodeSqlColumnMetadata(frameIterator *proto.ForwardFrameIterator) sql.SqlC
     initialFrame := frameIterator.Next()
     _type := FixSizedTypesCodec.DecodeInt(initialFrame.Content, SqlColumnMetadataCodecTypeFieldOffset)
     isNullableExists := false
-    let nullable = false    if (initialFrame.content.length >= NULLABLE_OFFSET + BitsUtil.BOOLEAN_SIZE_IN_BYTES) {
-    nullable = FixSizedTypesCodec.DecodeBoolean(initialFrame.Content, NULLABLE_OFFSET)
+    nullable := false
+
+    if len(initialFrame.Content) >= SqlColumnMetadataCodecNullableFieldOffset + proto.BooleanSizeInBytes {
+    nullable = FixSizedTypesCodec.DecodeBoolean(initialFrame.Content, SqlColumnMetadataCodecNullableFieldOffset)
     isNullableExists = true
     }
 
     name := DecodeString(frameIterator)
     CodecUtil.FastForwardToEndFrame(frameIterator)
-    return sql.NewSqlColumnMetadata(name, _type, isNullableExists, nullable)
+
+    return createSqlColumnMetadata(name, sql.SqlColumnType(_type), isNullableExists, nullable)
+}
+
+func createSqlColumnMetadata(name string, _type sql.SqlColumnType, isNullableExists bool, nullable bool) sql.SqlColumnMetadata {
+    // TODO: add check for _type == null
+
+    if isNullableExists {
+        return sql.NewSqlColumnMetadata(name, _type, nullable)
+    }
+
+
+    return sql.NewSqlColumnMetadata(name, _type, true)
 }
