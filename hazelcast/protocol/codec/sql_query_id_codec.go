@@ -56,5 +56,5 @@ func DecodeSqlQueryId(frameIterator *proto.ForwardFrameIterator) sql.QueryId {
     localIdHigh := FixSizedTypesCodec.DecodeLong(initialFrame.Content, SqlQueryIdCodecLocalIdHighFieldOffset)
     localIdLow := FixSizedTypesCodec.DecodeLong(initialFrame.Content, SqlQueryIdCodecLocalIdLowFieldOffset)
     CodecUtil.FastForwardToEndFrame(frameIterator)
-    return sql.NewQueryId(memberIdHigh, memberIdLow, localIdHigh, localIdLow)
+    return sql.NewQueryId(uint64(memberIdHigh), uint64(memberIdLow), uint64(localIdHigh), uint64(localIdLow))
 }

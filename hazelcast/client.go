@@ -3,6 +3,7 @@ package hazelcast
 import (
 	"fmt"
 	"github.com/hazelcast/hazelcast-go-client/v4/hazelcast/cluster"
+	"github.com/hazelcast/hazelcast-go-client/v4/internal/sql"
 	"reflect"
 	"sync/atomic"
 	"time"
@@ -35,6 +36,8 @@ type Client interface {
 
 	// access to data structures
 	GetMap(name string) (hztypes.Map, error)
+
+	GetSqlService() sql.SqlService
 }
 
 type clientImpl struct {
@@ -81,6 +84,11 @@ func (c *clientImpl) Name() string {
 func (c *clientImpl) GetMap(name string) (hztypes.Map, error) {
 	c.ensureStarted()
 	return c.proxyManager.GetMap(name)
+}
+
+func (c *clientImpl) GetSqlService() sql.SqlService {
+	c.ensureStarted()
+	return sql.NewSqlService(c.connectionManager)
 }
 
 func (c *clientImpl) Start() error {

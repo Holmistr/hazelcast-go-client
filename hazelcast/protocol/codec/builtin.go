@@ -3,6 +3,7 @@ package codec
 import (
 	"encoding/binary"
 	"github.com/hazelcast/hazelcast-go-client/v4/hazelcast/hzerror"
+	"github.com/hazelcast/hazelcast-go-client/v4/internal/sql"
 	"strings"
 
 	pubcluster "github.com/hazelcast/hazelcast-go-client/v4/hazelcast/cluster"
@@ -122,6 +123,97 @@ func (codecUtil) DecodeNullableForSimpleEntryView(frameIterator *proto.ForwardFr
 		frameIterator.Next()
 	}
 	return DecodeSimpleEntryView(frameIterator)
+}
+
+func (u codecUtil) DecodeNullableForSqlPage(iterator *proto.ForwardFrameIterator) sql.SqlPage {
+	// begin frame
+	iterator.Next()
+
+	//isLast := iterator.Next().Content[0] == 1
+
+	columnTypeIds := DecodeListInteger(iterator)
+	//columnTypes := make([]sql.SqlColumnType, len(columnTypeIds))
+
+	columns := make([]interface{}, len(columnTypeIds))
+
+	for _, columnTypeId := range columnTypeIds {
+		columnType := sql.SqlColumnType(columnTypeId)
+
+		//columnTypes := append(columnTypes, columnType)
+
+		switch columnType {
+		case sql.VARCHAR:
+			columns = append(columns, DecodeListMultiFrameForStringContainsNullable(iterator))
+			break
+
+		case sql.BOOLEAN:
+			columns = append(columns, DecodeListBool(iterator))
+			break
+
+		case sql.TINYINT:
+			columns = append(columns, DecodeListByte(iterator))
+			break
+
+		case sql.SMALLINT:
+			columns = append(columns, DecodeListShort(iterator))
+			break
+
+		case sql.INTEGER:
+			columns = append(columns, DecodeListInteger(iterator))
+			break
+
+		case sql.BIGINT:
+			columns = append(columns, DecodeListLong(iterator))
+			break
+
+		case sql.REAL:
+			columns = append(columns, DecodeListFloat(iterator))
+			break
+
+		case sql.DOUBLE:
+			//TODO: add
+			break
+
+		case sql.DATE:
+			//TODO: add
+			break
+
+		case sql.TIME:
+			//TODO: add
+			break
+
+		case sql.TIMESTAMP:
+			//TODO: add
+			break
+
+		case sql.TIMESTAMP_WITH_TIME_ZONE:
+			//TODO: add
+			break
+
+		case sql.DECIMAL:
+			//TODO: add
+			break
+
+		case sql.NULL:
+			//TODO: add
+			break
+
+		case sql.OBJECT:
+			//TODO: add
+			break
+
+		default:
+			//TODO: add this
+		}
+
+
+
+	}
+
+	u.FastForwardToEndFrame(iterator)
+
+	//TODO: this is where you left
+	return sql.SqlPage{}
 }
 
 func EncodeByteArray(message *proto.ClientMessage, value []byte) {
@@ -387,12 +479,20 @@ func (fixSizedTypesCodec) DecodeInt(buffer []byte, offset int32) int32 {
 	return int32(binary.LittleEndian.Uint32(buffer[offset:]))
 }
 
+func (fixSizedTypesCodec) DecodeShort(buffer []byte, offset int32) int16 {
+	return int16(binary.LittleEndian.Uint16(buffer[offset:]))
+}
+
 func (fixSizedTypesCodec) EncodeLong(buffer []byte, offset int32, value int64) {
 	binary.LittleEndian.PutUint64(buffer[offset:], uint64(value))
 }
 
 func (fixSizedTypesCodec) DecodeLong(buffer []byte, offset int32) int64 {
 	return int64(binary.LittleEndian.Uint64(buffer[offset:]))
+}
+
+func (fixSizedTypesCodec) DecodeFloat(buffer []byte, offset int32) float32 {
+	return float32(binary.LittleEndian.Uint64(buffer[offset:]))
 }
 
 func (fixSizedTypesCodec) EncodeBoolean(buffer []byte, offset int32, value bool) {
@@ -475,6 +575,46 @@ func DecodeListLong(frameIterator *proto.ForwardFrameIterator) []int64 {
 	result := make([]int64, itemCount)
 	for i := 0; i < itemCount; i++ {
 		result[i] = FixSizedTypesCodec.DecodeLong(frame.Content, int32(i*proto.LongSizeInBytes))
+	}
+	return result
+}
+
+func DecodeListFloat(frameIterator *proto.ForwardFrameIterator) []float32 {
+	frame := frameIterator.Next()
+	itemCount := len(frame.Content) / proto.FloatSizeInBytes
+	result := make([]float32, itemCount)
+	for i := 0; i < itemCount; i++ {
+		result[i] = FixSizedTypesCodec.DecodeFloat(frame.Content, int32(i*proto.FloatSizeInBytes))
+	}
+	return result
+}
+
+func DecodeListBool(frameIterator *proto.ForwardFrameIterator) []bool {
+	frame := frameIterator.Next()
+	itemCount := len(frame.Content) / proto.BooleanSizeInBytes
+	result := make([]bool, itemCount)
+	for i := 0; i < itemCount; i++ {
+		result[i] = FixSizedTypesCodec.DecodeBoolean(frame.Content, int32(i*proto.BooleanSizeInBytes))
+	}
+	return result
+}
+
+func DecodeListByte(frameIterator *proto.ForwardFrameIterator) []byte {
+	frame := frameIterator.Next()
+	itemCount := len(frame.Content) / proto.ByteSizeInBytes
+	result := make([]byte, itemCount)
+	for i := 0; i < itemCount; i++ {
+		result[i] = FixSizedTypesCodec.DecodeByte(frame.Content, int32(i*proto.ByteSizeInBytes))
+	}
+	return result
+}
+
+func DecodeListShort(frameIterator *proto.ForwardFrameIterator) []int16 {
+	frame := frameIterator.Next()
+	itemCount := len(frame.Content) / proto.ShortSizeInBytes
+	result := make([]int16, itemCount)
+	for i := 0; i < itemCount; i++ {
+		result[i] = FixSizedTypesCodec.DecodeShort(frame.Content, int32(i*proto.ShortSizeInBytes))
 	}
 	return result
 }
@@ -586,6 +726,20 @@ func DecodeListMultiFrameForString(frameIterator *proto.ForwardFrameIterator) []
 	frameIterator.Next()
 	for !CodecUtil.NextFrameIsDataStructureEndFrame(frameIterator) {
 		result = append(result, DecodeString(frameIterator))
+	}
+	frameIterator.Next()
+	return result
+}
+
+func DecodeListMultiFrameForStringContainsNullable(frameIterator *proto.ForwardFrameIterator) []string {
+	result := make([]string, 0)
+	frameIterator.Next()
+	for !CodecUtil.NextFrameIsDataStructureEndFrame(frameIterator) {
+		if CodecUtil.NextFrameIsNullFrame(frameIterator) {
+			result = append(result, "")
+		} else {
+			result = append(result, DecodeString(frameIterator))
+		}
 	}
 	frameIterator.Next()
 	return result

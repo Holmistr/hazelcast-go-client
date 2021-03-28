@@ -52,6 +52,6 @@ func DecodeSqlFetchResponse(clientMessage *proto.ClientMessage) (rowPage sql.Sql
     frameIterator.Next()
 
     rowPage = CodecUtil.DecodeNullableForSqlPage(frameIterator)
-    error = CodecUtil.DecodeNullableForSqlError(frameIterator)
+    //error = CodecUtil.DecodeNullableForSqlError(frameIterator)
 
     return rowPage, error }

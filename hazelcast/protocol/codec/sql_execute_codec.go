@@ -15,8 +15,8 @@ package codec
 
 import (
     "github.com/hazelcast/hazelcast-go-client/v4/internal/proto"
-    "github.com/hazelcast/hazelcast-go-client/v4/internal/sql"
     "github.com/hazelcast/hazelcast-go-client/v4/internal/serialization"
+    "github.com/hazelcast/hazelcast-go-client/v4/internal/sql"
 )
 
 
@@ -61,9 +61,11 @@ func DecodeSqlExecuteResponse(clientMessage *proto.ClientMessage) (rowMetadata [
     initialFrame := frameIterator.Next()
 
     updateCount = FixSizedTypesCodec.DecodeLong(initialFrame.Content, SqlExecuteResponseUpdateCountOffset)
-    rowMetadata = DecodeNullableListMultiFrameForSqlColumnMetadata(frameIterator)
+    //rowMetadata = DecodeNullableListMultiFrameForSqlColumnMetadata(frameIterator)
     rowPage = CodecUtil.DecodeNullableForSqlPage(frameIterator)
-    error = CodecUtil.DecodeNullableForSqlError(frameIterator)
+    //error = CodecUtil.DecodeNullableForSqlError(frameIterator)
+
+    //FixSizedTypesCodec.DecodeBoolean()
 
     return rowMetadata, rowPage, updateCount, error
 }
